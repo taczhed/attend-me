@@ -1,0 +1,5 @@
+Patryk Lach (15415):
+    - Inicjalizacja projektu
+    - Instalacja i definicja kolorów Tailwind
+    - Wygenerowanie i obsługa metod backend-owych za pomocą NSwagStudio
+    - Stworzenie strony, mechanizmu oraz komponentów logowania
