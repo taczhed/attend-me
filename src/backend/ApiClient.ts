@@ -36,7 +36,7 @@ export class Api extends ApiClientBase {
   override async userLogin(loginName: string, password: string): Promise<TokenResult> {
     const result = await super.userLogin(loginName, password)
 
-    if (!result || !result.token) throw new Error('Błąd podczas próby logowania. Spróbój ponownie!')
+    if (!result || !result.token) throw new Error('User token not found!')
 
     this.userTokenResult = result
     window.sessionStorage.setItem('attend-me:user-auth', JSON.stringify(result))
