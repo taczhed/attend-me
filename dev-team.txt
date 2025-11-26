@@ -3,3 +3,9 @@ Patryk Lach (15415):
     - Instalacja i definicja kolorów Tailwind
     - Wygenerowanie i obsługa metod backend-owych za pomocą NSwagStudio
     - Stworzenie strony, mechanizmu oraz komponentów logowania
+
+Mikołaj Osiak (15253)
+    - Sprawdzanie ról uzytkownika
+    - panel wykładowcy i studenta
+    - wylogowywanie
+    - filtrowanie i wyszukiwanie zajęć

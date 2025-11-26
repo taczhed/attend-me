@@ -1,5 +1,5 @@
 import { dateReviver } from '../utils/JsonHelpers.ts'
-import { ApiClientBase, TokenResult, User } from './ApiClientBase.ts'
+import { ApiClientBase, TokenResult, User, DeviceRegisterDTO } from './ApiClientBase.ts'
 
 export class Api extends ApiClientBase {
   userTokenResult?: TokenResult
@@ -48,6 +48,11 @@ export class Api extends ApiClientBase {
     return await super.userGet(userId)
   }
 
+  userLogout() {
+    this.userTokenResult = undefined
+    window.sessionStorage.removeItem('attend-me:user-auth')
+  }
+
   // Blackbox
   private fetchWrapper(requestInfo: RequestInfo, init?: RequestInit): Promise<Response> {
     const opts: RequestInit = { ...init }
@@ -85,7 +90,7 @@ export class Api extends ApiClientBase {
   }
 
   userDeviceRegisterWithToken(token: string, data: DeviceRegisterDTO): Promise<TokenResult> {
-    this.deviceTokenResult = { token }
+    this.deviceTokenResult = new TokenResult({ token })
     return super.userDeviceRegister(data).then((result) => {
       this.deviceTokenResult = result
       window.localStorage.setItem('attend-me:device-auth', JSON.stringify(result))

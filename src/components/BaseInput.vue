@@ -20,7 +20,7 @@ const value = defineModel()
       :placeholder="placeholder"
       :class="error ? 'border-red-500' : 'border-secondary-300'"
       v-model="value"
-      class="px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+      class="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
     />
     <span v-if="error" class="text-sm text-red-500">{{ error }}</span>
   </div>
