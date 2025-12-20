@@ -30,7 +30,7 @@ const handleLogin = async () => {
 
 <template>
   <div class="min-h-screen flex flex-col bg-secondary-50">
-    <AppHeader :user="currentUser" @logout="logout" />
+    <AppHeader />
     <div class="flex-grow flex items-center justify-center bg-secondary-50 px-4">
       <div class="w-full max-w-[420px] bg-white rounded-2xl shadow-lg px-8 py-12">
         <h1 class="text-center text-3xl font-bold text-secondary-900 mb-8">Zaloguj się</h1>

@@ -2,7 +2,7 @@
 import type { User } from '@/backend/ApiClientBase.ts'
 
 defineProps<{
-  user: User | null
+  user?: User | null
 }>()
 
 defineEmits<{
