@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { User } from '@/backend/ApiClientBase.ts'
+import BaseButton from '@/components/BaseButton.vue'
 
 defineProps<{
   user?: User | null
@@ -22,12 +23,8 @@ defineEmits<{
           {{ user.isTeacher ? 'Wykładowca' : user.isStudent ? 'Student' : 'Użytkownik' }}
         </div>
       </div>
-      <button
-        @click="$emit('logout')"
-        class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-md text-sm font-medium transition-colors shadow-sm"
-      >
-        Wyloguj
-      </button>
+
+      <BaseButton @click="$emit('logout')" variant="primary">Wyloguj</BaseButton>
     </div>
   </header>
 </template>
