@@ -5,9 +5,12 @@ import type { User } from '@/backend/ApiClientBase.ts'
 import AppHeader from '@/components/AppHeader.vue'
 import TeacherDashboard from '@/components/teacher/TeacherDashboard.vue'
 import StudentDashboard from '@/components/student/StudentDashboard.vue'
+import { useRouter } from 'vue-router'
 
 const currentUser = ref<User | null>(null)
 const isLoading = ref(true)
+
+const router = useRouter()
 
 watchEffect(() => {
   ApiClient.userGet()
@@ -26,6 +29,7 @@ watchEffect(() => {
 function logout() {
   ApiClient.userLogout()
   currentUser.value = null
+  router.replace('/login')
 }
 </script>
 

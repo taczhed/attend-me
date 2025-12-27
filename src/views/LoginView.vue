@@ -19,7 +19,7 @@ const handleLogin = async () => {
 
   try {
     await ApiClient.userLogin(login.value, password.value)
-    await router.push('/')
+    await router.replace('/')
   } catch {
     error.value = 'Błąd logowania. Spróbój ponownie!'
   } finally {
