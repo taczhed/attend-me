@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { User } from '@/backend/ApiClientBase.ts'
-import BaseButton from '@/components/BaseButton.vue'
+import BaseButton from '@/components/base/BaseButton.vue'
 
 defineProps<{
   user?: User | null

@@ -7,7 +7,8 @@ import {
   CourseSessionListFilters,
   type CourseSessionListItem,
 } from '@/backend/ApiClientBase.ts'
-import BaseInput from '@/components/BaseInput.vue'
+import BaseInput from '@/components/base/BaseInput.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
 
 defineProps<{
   user: User
@@ -100,16 +101,16 @@ onMounted(() => {
           <BaseInput v-model="searchText" placeholder="Szukaj zajęć..." />
         </div>
         <div class="w-full md:w-64">
-          <select
+          <BaseSelect
             v-model="dateFilter"
-            class="w-full px-4 py-2.5 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white"
-          >
-            <option value="today">Aktualne (dziś)</option>
-            <option value="tomorrow">Jutro</option>
-            <option value="next-week">Następny tydzień</option>
-            <option value="past">Minione</option>
-            <option value="all">Wszystkie</option>
-          </select>
+            :options="[
+              { value: 'today', label: 'Aktualne (dziś)' },
+              { value: 'tomorrow', label: 'Jutro' },
+              { value: 'next-week', label: 'Następny tydzień' },
+              { value: 'past', label: 'Minione' },
+              { value: 'all', label: 'Wszystkie' },
+            ]"
+          />
         </div>
       </div>
 

@@ -3,6 +3,7 @@ Patryk Lach (15415):
     - Instalacja i definicja kolorów Tailwind
     - Wygenerowanie i obsługa metod backend-owych za pomocą NSwagStudio
     - Stworzenie strony, mechanizmu oraz komponentów logowania
+    - Zmiany związane z tworzeniem i utrzymywaniem biblioteki komponentów bazowych
 
 Mikołaj Osiak (15253)
     - Sprawdzanie ról uzytkownika
