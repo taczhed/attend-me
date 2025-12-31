@@ -1,32 +1,43 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { ApiClient } from '@/backend/ApiClient.ts'
+import { useRouter } from 'vue-router'
+import { ApiClient } from '@/backend/ApiClient'
 import {
   type User,
   CourseSessionListFiltersPagedListParams,
   CourseSessionListFilters,
   type CourseSessionListItem,
-} from '@/backend/ApiClientBase.ts'
+} from '@/backend/ApiClientBase'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 
-defineProps<{
-  user: User
-}>()
+defineProps<{ user: User }>()
+
+const router = useRouter()
 
 const studentSessions = ref<CourseSessionListItem[]>([])
 const isLoading = ref(true)
 const searchText = ref('')
 const dateFilter = ref('today')
 
+function openSession(session: CourseSessionListItem) {
+  const sessionId = session.courseSessionId
+  if (!sessionId) return
+
+  router.push({
+    name: 'student-session-details',
+    params: { sessionId },
+    query: session.courseGroupId ? { courseGroupId: String(session.courseGroupId) } : {},
+  })
+}
+
 function getDateRange(filter: string): { dateStart?: Date; dateEnd?: Date } {
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
 
-  if (filter === 'today') {
-    return { dateStart: todayStart, dateEnd: todayEnd }
-  }
+  if (filter === 'today') return { dateStart: todayStart, dateEnd: todayEnd }
+
   if (filter === 'tomorrow') {
     const tomorrowStart = new Date(todayStart)
     tomorrowStart.setDate(tomorrowStart.getDate() + 1)
@@ -34,8 +45,9 @@ function getDateRange(filter: string): { dateStart?: Date; dateEnd?: Date } {
     tomorrowEnd.setDate(tomorrowEnd.getDate() + 1)
     return { dateStart: tomorrowStart, dateEnd: tomorrowEnd }
   }
+
   if (filter === 'next-week') {
-    const daysUntilNextMonday = (1 + 7 - todayStart.getDay()) % 7 || 7
+    const daysUntilNextMonday = ((1 + 7 - todayStart.getDay()) % 7) || 7
     const nextMonday = new Date(todayStart)
     nextMonday.setDate(todayStart.getDate() + daysUntilNextMonday)
     const nextSunday = new Date(nextMonday)
@@ -43,14 +55,15 @@ function getDateRange(filter: string): { dateStart?: Date; dateEnd?: Date } {
     nextSunday.setHours(23, 59, 59, 999)
     return { dateStart: nextMonday, dateEnd: nextSunday }
   }
-  if (filter === 'past') {
-    return { dateEnd: new Date(todayStart.getTime() - 1) }
-  }
+
+  if (filter === 'past') return { dateEnd: new Date(todayStart.getTime() - 1) }
+
   return {}
 }
 
 function fetchStudentSessions() {
   isLoading.value = true
+
   const dateRange = getDateRange(dateFilter.value)
   const filters = new CourseSessionListFilters({
     search: searchText.value,
@@ -61,7 +74,7 @@ function fetchStudentSessions() {
   const params = new CourseSessionListFiltersPagedListParams({
     pageNumber: 1,
     pageSize: 20,
-    filters: filters,
+    filters,
   })
 
   ApiClient.courseStudentSessionsGet(params)
@@ -77,19 +90,16 @@ function fetchStudentSessions() {
 let searchTimeout: ReturnType<typeof setTimeout>
 watch([searchText, dateFilter], () => {
   clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => {
-    fetchStudentSessions()
-  }, 300)
+  searchTimeout = setTimeout(fetchStudentSessions, 300)
 })
 
-onMounted(() => {
-  fetchStudentSessions()
-})
+onMounted(fetchStudentSessions)
 </script>
 
 <template>
   <div class="w-full max-w-5xl">
     <h1 class="text-3xl font-bold text-secondary-900 mb-8">Panel Studenta</h1>
+
     <div class="bg-white p-6 rounded-lg shadow-md">
       <h2 class="text-xl font-semibold mb-6 text-gray-800">Twoje nadchodzące zajęcia</h2>
 
@@ -112,11 +122,13 @@ onMounted(() => {
       </div>
 
       <div v-if="isLoading" class="text-center py-8 text-gray-500">Ładowanie zajęć...</div>
-      <div v-else-if="studentSessions.length > 0" class="space-y-4">
+
+      <div v-else-if="studentSessions.length" class="space-y-4">
         <div
           v-for="session in studentSessions"
           :key="session.courseSessionId"
-          class="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow bg-white"
+          class="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow bg-white cursor-pointer"
+          @click="openSession(session)"
         >
           <div class="flex flex-col md:flex-row justify-between md:items-center gap-4">
             <div>
@@ -127,6 +139,7 @@ onMounted(() => {
                 {{ session.locationName }}
               </div>
             </div>
+
             <div class="text-left md:text-right">
               <div class="font-medium text-gray-900">
                 {{ session.dateStart ? new Date(session.dateStart).toLocaleDateString() : '' }}
@@ -134,19 +147,13 @@ onMounted(() => {
               <div class="text-sm text-gray-500">
                 {{
                   session.dateStart
-                    ? new Date(session.dateStart).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
+                    ? new Date(session.dateStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     : ''
                 }}
                 -
                 {{
                   session.dateEnd
-                    ? new Date(session.dateEnd).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
+                    ? new Date(session.dateEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     : ''
                 }}
               </div>
@@ -154,6 +161,7 @@ onMounted(() => {
           </div>
         </div>
       </div>
+
       <div
         v-else
         class="text-center text-gray-500 py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300"
