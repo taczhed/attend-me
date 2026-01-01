@@ -2,53 +2,96 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { backend } from '@/services/backend'
-import type { DeviceRegisterDTO, TokenResult } from '@/backend/ApiClientBase'
+import { DeviceRegisterDTO } from '@/backend/ApiClientBase'
 
 const route = useRoute()
 const router = useRouter()
 
 const token = computed(() => String(route.query.token ?? ''))
 
+const studentName = ref('')
+const studentSurname = ref('')
+const albumIdNumber = ref('')
+
 const deviceName = ref(
-  (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : 'My device'
+  typeof navigator !== 'undefined' && navigator.userAgent ? navigator.userAgent : 'My device'
 )
 
 const isLoading = ref(false)
 const ok = ref('')
 const error = ref('')
 
-function setDeviceToken(tokenValue: string) {
-  localStorage.setItem('deviceToken', tokenValue)
-  backend.deviceTokenResult = { token: tokenValue } as TokenResult
+function normalize(s: string) {
+  return s.trim()
+}
+
+function parseErrorMessage(e: unknown) {
+  if (e instanceof Error) {
+    try {
+      const parsed = JSON.parse(e.message) as { title?: string; detail?: string; type?: string }
+      if (parsed?.type === 'device_user_data_mismatch') {
+        return 'Dane (imię/nazwisko) nie pasują do użytkownika przypisanego do tego linku. Skopiuj link rejestracji dla właściwego studenta lub wpisz dane dokładnie jak w systemie.'
+      }
+      if (parsed?.detail) return parsed.detail
+      if (parsed?.title) return parsed.title
+    } catch {
+      return e.message
+    }
+    return e.message
+  }
+  return 'Nie udało się zarejestrować urządzenia'
 }
 
 async function register() {
   ok.value = ''
   error.value = ''
 
-  if (!token.value) {
+  const t = normalize(token.value)
+  const dn = normalize(deviceName.value)
+  const sn = normalize(studentName.value)
+  const ss = normalize(studentSurname.value)
+  const albumRaw = normalize(albumIdNumber.value)
+
+  if (!t) {
     error.value = 'Brak tokenu w URL. Link powinien mieć parametr ?token=...'
     return
+  }
+  if (!sn || !ss) {
+    error.value = 'Podaj imię i nazwisko.'
+    return
+  }
+  if (!dn) {
+    error.value = 'Podaj nazwę urządzenia.'
+    return
+  }
+
+  let album: number | undefined = undefined
+  if (albumRaw) {
+    const n = Number(albumRaw)
+    if (!Number.isFinite(n) || n <= 0) {
+      error.value = 'Numer albumu musi być liczbą.'
+      return
+    }
+    album = n
   }
 
   isLoading.value = true
   try {
-    const dto = { deviceName: deviceName.value } as DeviceRegisterDTO
-    const res = await backend.userDeviceRegisterWithToken(token.value, dto)
+    const dto = new DeviceRegisterDTO({
+      deviceName: dn,
+      studentName: sn,
+      studentSurname: ss,
+      albumIdNumber: album,
+    })
 
-    const tokenValue =
-      (typeof res === 'object' && res && 'token' in res && typeof (res as { token?: unknown }).token === 'string')
-        ? (res as { token: string }).token
-        : ''
+    const res = await backend.userDeviceRegisterWithToken(t, dto)
 
-    if (!tokenValue) {
-      throw new Error('Backend nie zwrócił tokenu urządzenia.')
-    }
+    const tokenValue = res?.token ?? ''
+    if (!tokenValue) throw new Error('Backend nie zwrócił tokenu urządzenia.')
 
-    setDeviceToken(tokenValue)
     ok.value = 'Urządzenie zarejestrowane. Możesz wrócić do zajęć i generować QR.'
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Nie udało się zarejestrować urządzenia'
+    error.value = parseErrorMessage(e)
   } finally {
     isLoading.value = false
   }
@@ -71,14 +114,43 @@ function goBack() {
         Brak tokenu w URL. Link powinien mieć parametr <b>?token=...</b>
       </div>
 
-      <label class="block">
-        <span class="text-sm text-gray-700 font-medium">Nazwa urządzenia</span>
-        <input
-          v-model="deviceName"
-          class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"
-          placeholder="np. iPhone / Laptop"
-        />
-      </label>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <label class="block">
+          <span class="text-sm text-gray-700 font-medium">Imię</span>
+          <input
+            v-model="studentName"
+            class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"
+            placeholder="np. Jan"
+          />
+        </label>
+
+        <label class="block">
+          <span class="text-sm text-gray-700 font-medium">Nazwisko</span>
+          <input
+            v-model="studentSurname"
+            class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"
+            placeholder="np. Kowalski"
+          />
+        </label>
+
+        <label class="block">
+          <span class="text-sm text-gray-700 font-medium">Numer albumu (opcjonalnie)</span>
+          <input
+            v-model="albumIdNumber"
+            class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"
+            placeholder="np. 15186"
+          />
+        </label>
+
+        <label class="block">
+          <span class="text-sm text-gray-700 font-medium">Nazwa urządzenia</span>
+          <input
+            v-model="deviceName"
+            class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"
+            placeholder="np. iPhone / Laptop"
+          />
+        </label>
+      </div>
 
       <div class="flex gap-2">
         <button

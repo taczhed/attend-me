@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
-import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
+import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
+import { useRoute, useRouter, type LocationQueryRaw, type Router } from 'vue-router'
 import { ApiClient } from '@/backend/ApiClient'
 import type { CourseSessionListItem, AttendanceLog, TokenResult, User } from '@/backend/ApiClientBase'
+
+type AttendeeRow = {
+  userId: number
+  fullName: string
+  album?: string
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -11,13 +17,14 @@ const sessionId = computed(() => Number(route.params.sessionId))
 
 const session = ref<CourseSessionListItem | null>(null)
 const attendance = ref<AttendanceLog[]>([])
+const attendees = ref<AttendeeRow[]>([])
 const isLoading = ref(true)
 const error = ref('')
+const copyInfo = ref('')
+const scannerUrl = ref('')
+const deviceRegisterUrl = ref('')
 
-const isRefreshingAttendance = ref(false)
-let attendanceIntervalId: number | null = null
-
-const usersById = ref<Record<number, User>>({})
+const userCache = ref(new Map<number, AttendeeRow>())
 
 const headerTitle = computed(() => {
   if (!session.value) return 'Szczegóły zajęć'
@@ -26,16 +33,57 @@ const headerTitle = computed(() => {
   return `${courseName} — ${groupName}`.trim()
 })
 
-function buildAbsoluteUrl(pathOrHref: string) {
-  return new URL(pathOrHref, window.location.origin).toString()
+function buildAbsoluteUrl(href: string) {
+  try {
+    return new URL(href, window.location.origin).toString()
+  } catch {
+    return href
+  }
 }
 
-function resolveNamedRouteUrl(name: string, query?: LocationQueryRaw) {
-  const resolved = router.resolve({ name, query })
+function resolveNamedRouteUrl(r: Router, name: string, query?: LocationQueryRaw) {
+  const resolved = r.resolve({ name, query })
   return buildAbsoluteUrl(resolved.href)
 }
 
-async function loadSession() {
+async function safeCopyToClipboard(text: string) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    /* ignore */
+  }
+
+  try {
+    const el = document.createElement('textarea')
+    el.value = text
+    el.setAttribute('readonly', 'true')
+    el.style.position = 'fixed'
+    el.style.left = '-9999px'
+    el.style.top = '-9999px'
+    document.body.appendChild(el)
+    el.focus()
+    el.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(el)
+    return ok
+  } catch {
+    return false
+  }
+}
+
+let copyTimer: number | null = null
+function setCopyInfo(msg: string) {
+  copyInfo.value = msg
+  if (copyTimer) window.clearTimeout(copyTimer)
+  copyTimer = window.setTimeout(() => {
+    copyInfo.value = ''
+  }, 2500)
+}
+
+async function loadData() {
   error.value = ''
 
   if (!Number.isFinite(sessionId.value) || sessionId.value <= 0) {
@@ -47,172 +95,139 @@ async function loadSession() {
   isLoading.value = true
   try {
     session.value = await ApiClient.courseTeacherSessionGet(sessionId.value)
+    await refreshAttendanceOnly()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Błąd ładowania danych sesji'
-    console.error('Błąd ładowania sesji', e)
+    error.value = e instanceof Error ? e.message : 'Błąd ładowania danych'
+    console.error('Błąd ładowania szczegółów zajęć', e)
   } finally {
     isLoading.value = false
   }
 }
 
-async function refreshAttendanceList() {
+async function refreshAttendanceOnly() {
   if (!Number.isFinite(sessionId.value) || sessionId.value <= 0) return
 
-  isRefreshingAttendance.value = true
   try {
-    const list = await ApiClient.courseSessionAttendanceListGet(sessionId.value)
-    attendance.value = list ?? []
-    await hydrateUsersForAttendance(attendance.value)
+    attendance.value = await ApiClient.courseSessionAttendanceListGet(sessionId.value)
+    await hydrateAttendeesFromAttendance()
   } catch (e) {
     console.error('Błąd odświeżania listy obecności', e)
-  } finally {
-    isRefreshingAttendance.value = false
   }
 }
 
-async function hydrateUsersForAttendance(list: AttendanceLog[]) {
+async function hydrateAttendeesFromAttendance() {
   const ids = Array.from(
-    new Set(list.map((a) => a.attenderUserId).filter((x): x is number => typeof x === 'number')),
+    new Set(
+      attendance.value
+        .map((a) => a.attenderUserId)
+        .filter((x): x is number => typeof x === 'number')
+    )
   )
 
-  const missing = ids.filter((id) => !usersById.value[id])
-  if (!missing.length) return
-
-  try {
-    const users = await Promise.all(
-      missing.map(async (id) => {
-        try {
-          const u = await ApiClient.userGet(id)
-          return [id, u] as const
-        } catch {
-          return null
-        }
-      }),
-    )
-
-    const next = { ...usersById.value }
-    for (const entry of users) {
-      if (!entry) continue
-      const [id, u] = entry
-      next[id] = u
-    }
-    usersById.value = next
-  } catch (e) {
-    console.error('Błąd dociągania danych użytkowników', e)
-  }
-}
-
-function formatAttender(a: AttendanceLog) {
-  const id = a.attenderUserId
-  if (!id) return 'Nieznany użytkownik'
-
-  const u = usersById.value[id]
-  if (!u) return `UserID: ${id}`
-
-  const fullName = [u.name, u.surname].filter(Boolean).join(' ').trim()
-  const album = u.student?.albumIdNumber
-
-  return `${fullName || `UserID: ${id}`}${album ? ` (${album})` : ''}`
-}
-
-function attendanceTime(a: AttendanceLog) {
-  const d = a.dateCreated
-  if (!d) return ''
-  return new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-}
-
-async function openScanner() {
-  error.value = ''
-
-  if (!Number.isFinite(sessionId.value) || sessionId.value <= 0) {
-    error.value = 'Brak poprawnego sessionId w URL.'
-    return
-  }
-
-  try {
-    const res = (await ApiClient.courseSessionAttendanceScannerTokenGet(sessionId.value)) as TokenResult
-    const token = res?.token
-
-    if (!token) {
-      error.value = 'Nie udało się pobrać tokenu skanera.'
-      return
+  const rows: AttendeeRow[] = []
+  for (const id of ids) {
+    const cached = userCache.value.get(id)
+    if (cached) {
+      rows.push(cached)
+      continue
     }
 
-    router.push({ name: 'teacher-scanner', query: { token } })
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Nie udało się otworzyć skanera'
-    console.error('Błąd pobierania tokenu skanera', e)
+    try {
+      const u = (await ApiClient.userGet(id)) as User
+      const fullName = [u?.name, u?.surname].filter(Boolean).join(' ').trim() || `UserID: ${id}`
+      const albumRaw = u?.student?.albumIdNumber
+      const album = albumRaw == null ? undefined : String(albumRaw)
+      const row: AttendeeRow = { userId: id, fullName, album }
+      userCache.value.set(id, row)
+      rows.push(row)
+    } catch {
+      const row: AttendeeRow = { userId: id, fullName: `UserID: ${id}` }
+      userCache.value.set(id, row)
+      rows.push(row)
+    }
   }
+
+  attendees.value = rows
 }
 
 async function getScannerToken(): Promise<string | null> {
-  const res = (await ApiClient.courseSessionAttendanceScannerTokenGet(sessionId.value)) as TokenResult
-  return res?.token ?? null
+  if (!Number.isFinite(sessionId.value) || sessionId.value <= 0) return null
+  try {
+    const res = (await ApiClient.courseSessionAttendanceScannerTokenGet(sessionId.value)) as TokenResult
+    return res?.token ?? null
+  } catch {
+    return null
+  }
 }
 
-async function getDeviceRegisterToken(): Promise<string | null> {
-  // UWAGA: jeśli u Ciebie metoda ma inną nazwę, podmień tę linijkę.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const res = (await (ApiClient as any).userDeviceRegisterTokenGet?.()) as TokenResult | undefined
-  return res?.token ?? null
+async function getDeviceRegisterToken(deviceUserId: number): Promise<string | null> {
+  try {
+    const res = (await ApiClient.userDeviceRegisterTokenGet(deviceUserId)) as TokenResult
+    return res?.token ?? null
+  } catch {
+    return null
+  }
 }
-
-async function copyToClipboard(text: string) {
-  await navigator.clipboard.writeText(text)
-}
-
-const scannerLink = ref<string>('')
-const deviceRegisterLink = ref<string>('')
 
 async function copyScannerLink() {
   error.value = ''
-  try {
-    if (!Number.isFinite(sessionId.value) || sessionId.value <= 0) {
-      error.value = 'Brak poprawnego sessionId.'
-      return
-    }
-    const token = await getScannerToken()
-    if (!token) {
-      error.value = 'Nie udało się pobrać tokenu skanera.'
-      return
-    }
+  scannerUrl.value = ''
 
-    const url = resolveNamedRouteUrl('teacher-scanner', { token })
-    scannerLink.value = url
-    await copyToClipboard(url)
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Nie udało się skopiować linku skanera'
+  const token = await getScannerToken()
+  if (!token) {
+    error.value = 'Nie udało się pobrać tokenu skanera.'
+    return
   }
+
+  const url = resolveNamedRouteUrl(router, 'teacher-scanner', { token })
+  scannerUrl.value = url
+
+  const ok = await safeCopyToClipboard(url)
+  setCopyInfo(ok ? 'Skopiowano do schowka.' : 'Nie udało się skopiować linku.')
 }
 
-async function copyDeviceRegisterLink() {
+async function copyStudentDeviceRegisterLinkForUser(deviceUserId: number) {
   error.value = ''
-  try {
-    const token = await getDeviceRegisterToken()
-    if (!token) {
-      error.value = 'Nie udało się pobrać tokenu rejestracji urządzenia.'
-      return
-    }
+  deviceRegisterUrl.value = ''
 
-    const url = resolveNamedRouteUrl('student-device-register', { token })
-    deviceRegisterLink.value = url
-    await copyToClipboard(url)
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Nie udało się skopiować linku rejestracji urządzenia'
+  const token = await getDeviceRegisterToken(deviceUserId)
+  if (!token) {
+    error.value = 'Nie udało się pobrać tokenu rejestracji urządzenia.'
+    return
   }
+
+  const url = resolveNamedRouteUrl(router, 'student-device-register', { token })
+  deviceRegisterUrl.value = url
+
+  const ok = await safeCopyToClipboard(url)
+  setCopyInfo(ok ? 'Skopiowano do schowka.' : 'Nie udało się skopiować linku.')
 }
 
-onMounted(async () => {
-  await loadSession()
-  await refreshAttendanceList()
+async function copyStudentDeviceRegisterLink() {
+  error.value = ''
+  deviceRegisterUrl.value = ''
 
-  attendanceIntervalId = window.setInterval(() => {
-    refreshAttendanceList()
+  if (attendees.value.length === 1) {
+    await copyStudentDeviceRegisterLinkForUser(attendees.value[0]!.userId)
+    return
+  }
+
+  error.value =
+    'Nie udało się wygenerować uniwersalnego linku. Skopiuj link dla konkretnego studenta z listy obecności.'
+}
+
+let refreshTimer: number | null = null
+
+onMounted(() => {
+  loadData()
+  refreshTimer = window.setInterval(() => {
+    refreshAttendanceOnly()
   }, 5000)
 })
 
 onBeforeUnmount(() => {
-  if (attendanceIntervalId) window.clearInterval(attendanceIntervalId)
+  if (refreshTimer) window.clearInterval(refreshTimer)
+  if (copyTimer) window.clearTimeout(copyTimer)
 })
 </script>
 
@@ -225,10 +240,10 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="flex gap-2">
-        <button class="px-4 py-2 rounded-lg bg-gray-900 text-white" @click="loadSession">
+        <button class="px-4 py-2 rounded-lg bg-gray-900 text-white" @click="loadData">
           Odśwież
         </button>
-        <button class="px-4 py-2 rounded-lg bg-green-700 text-white" @click="openScanner">
+        <button class="px-4 py-2 rounded-lg bg-green-700 text-white" @click="copyScannerLink">
           Otwórz skaner
         </button>
       </div>
@@ -239,7 +254,7 @@ onBeforeUnmount(() => {
 
     <div v-else class="space-y-4">
       <div class="bg-white p-6 rounded-lg shadow-md space-y-3">
-        <h2 class="text-lg font-semibold mb-2">Informacje o sesji</h2>
+        <h2 class="text-lg font-semibold">Informacje o sesji</h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
           <div><b>ID sesji:</b> {{ sessionId }}</div>
@@ -270,41 +285,51 @@ onBeforeUnmount(() => {
           <button class="px-4 py-2 rounded-lg bg-gray-900 text-white" @click="copyScannerLink">
             Kopiuj link skanera
           </button>
-          <button class="px-4 py-2 rounded-lg bg-green-700 text-white" @click="copyDeviceRegisterLink">
+          <button
+            class="px-4 py-2 rounded-lg bg-green-700 text-white"
+            @click="copyStudentDeviceRegisterLink"
+          >
             Kopiuj link rejestracji urządzenia studenta
           </button>
+          <span v-if="copyInfo" class="text-sm text-gray-600 self-center">{{ copyInfo }}</span>
         </div>
 
-        <div v-if="scannerLink || deviceRegisterLink" class="text-xs text-gray-600 break-all pt-1 space-y-1">
-          <div v-if="scannerLink"><b>Link skanera:</b> {{ scannerLink }}</div>
-          <div v-if="deviceRegisterLink"><b>Link rejestracji urządzenia:</b> {{ deviceRegisterLink }}</div>
+        <div v-if="scannerUrl" class="text-xs text-gray-600">
+          <div class="font-semibold mb-1">Link skanera:</div>
+          <textarea class="w-full border rounded-lg p-2" rows="3" readonly :value="scannerUrl" />
         </div>
 
-        <div class="text-xs text-gray-500 pt-1">
-          Auto-odświeżanie listy obecności: co 5s (tylko lista, bez przeładowywania strony).
+        <div v-if="deviceRegisterUrl" class="text-xs text-gray-600">
+          <div class="font-semibold mb-1">Link rejestracji urządzenia:</div>
+          <textarea class="w-full border rounded-lg p-2" rows="3" readonly :value="deviceRegisterUrl" />
+        </div>
+
+        <div class="text-xs text-gray-500">
+          Auto-odświeżanie listy obecności co 5s (tylko lista, bez przeładowywania strony).
         </div>
       </div>
 
       <div class="bg-white p-6 rounded-lg shadow-md">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold">Lista obecności</h2>
-          <div class="text-xs text-gray-500">
-            <span v-if="isRefreshingAttendance">Aktualizuję…</span>
-          </div>
+          <div class="text-xs text-gray-500">Aktualne</div>
         </div>
 
-        <div v-if="attendance.length" class="space-y-2">
+        <div v-if="attendees.length" class="space-y-2">
           <div
-            v-for="a in attendance"
-            :key="a.attendanceLogId"
-            class="p-3 border border-gray-200 rounded-lg flex items-center justify-between"
+            v-for="a in attendees"
+            :key="a.userId"
+            class="p-3 border border-gray-200 rounded-lg flex items-center justify-between gap-3"
           >
-            <div class="text-gray-900 font-medium">
-              {{ formatAttender(a) }}
+            <div class="font-medium text-gray-900">
+              {{ a.fullName }}<span v-if="a.album"> ({{ a.album }})</span>
             </div>
-            <div class="text-xs text-gray-500">
-              {{ attendanceTime(a) }}
-            </div>
+            <button
+              class="px-3 py-1 rounded-lg bg-gray-900 text-white text-sm"
+              @click="copyStudentDeviceRegisterLinkForUser(a.userId)"
+            >
+              Kopiuj link
+            </button>
           </div>
         </div>
 
