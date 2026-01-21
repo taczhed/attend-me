@@ -14,7 +14,6 @@ export class Api extends ApiClientBase {
 
     this.jsonParseReviver = dateReviver
 
-    // restore auth when present in storage:
     this.restoreTokens()
   }
 
@@ -53,7 +52,6 @@ export class Api extends ApiClientBase {
     window.sessionStorage.removeItem('attend-me:user-auth')
   }
 
-  // Blackbox
   private fetchWrapper(requestInfo: RequestInfo, init?: RequestInit): Promise<Response> {
     const opts: RequestInit = { ...init }
     const requestUrl = typeof requestInfo === 'string' ? requestInfo : requestInfo.url

@@ -9,6 +9,8 @@ import {
 } from '@/backend/ApiClientBase.ts'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
+import BaseButton from '@/components/base/BaseButton.vue'
+import { getDateRange, formatDatePL, formatTimePL } from '@/utils/dateHelpers'
 
 defineProps<{
   user: User
@@ -19,38 +21,9 @@ const isLoading = ref(true)
 const searchText = ref('')
 const dateFilter = ref('today')
 
-function getDateRange(filter: string): { dateStart?: Date; dateEnd?: Date } {
-  const now = new Date()
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
-
-  if (filter === 'today') {
-    return { dateStart: todayStart, dateEnd: todayEnd }
-  }
-  if (filter === 'tomorrow') {
-    const tomorrowStart = new Date(todayStart)
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1)
-    const tomorrowEnd = new Date(todayEnd)
-    tomorrowEnd.setDate(tomorrowEnd.getDate() + 1)
-    return { dateStart: tomorrowStart, dateEnd: tomorrowEnd }
-  }
-  if (filter === 'next-week') {
-    const daysUntilNextMonday = (1 + 7 - todayStart.getDay()) % 7 || 7
-    const nextMonday = new Date(todayStart)
-    nextMonday.setDate(todayStart.getDate() + daysUntilNextMonday)
-    const nextSunday = new Date(nextMonday)
-    nextSunday.setDate(nextMonday.getDate() + 6)
-    nextSunday.setHours(23, 59, 59, 999)
-    return { dateStart: nextMonday, dateEnd: nextSunday }
-  }
-  if (filter === 'past') {
-    return { dateEnd: new Date(todayStart.getTime() - 1) }
-  }
-  return {}
-}
-
-function fetchTeacherSessions() {
+async function fetchTeacherSessions() {
   isLoading.value = true
+
   const dateRange = getDateRange(dateFilter.value)
   const filters = new CourseSessionListFilters({
     search: searchText.value,
@@ -64,14 +37,14 @@ function fetchTeacherSessions() {
     filters: filters,
   })
 
-  ApiClient.courseTeacherSessionsGet(params)
-    .then((result) => {
-      teacherSessions.value = result.items
-    })
-    .catch((err) => console.error('Failed to fetch sessions', err))
-    .finally(() => {
-      isLoading.value = false
-    })
+  try {
+    const result = await ApiClient.courseTeacherSessionsGet(params)
+    teacherSessions.value = result.items
+  } catch (err) {
+    console.error('Failed to fetch sessions', err)
+  } finally {
+    isLoading.value = false
+  }
 }
 
 let searchTimeout: ReturnType<typeof setTimeout>
@@ -91,6 +64,9 @@ onMounted(() => {
   <div class="w-full max-w-5xl">
     <div class="flex justify-between items-center mb-8">
       <h1 class="text-3xl font-bold text-secondary-900">Panel Wykładowcy</h1>
+      <router-link :to="{ name: 'teacher-device-token' }">
+        <BaseButton variant="secondary">Wygeneruj token</BaseButton>
+      </router-link>
     </div>
 
     <div class="bg-white p-6 rounded-lg shadow-md">
@@ -116,10 +92,11 @@ onMounted(() => {
 
       <div v-if="isLoading" class="text-center py-8 text-gray-500">Ładowanie zajęć...</div>
       <div v-else-if="teacherSessions.length > 0" class="space-y-4">
-        <div
+        <router-link
           v-for="session in teacherSessions"
           :key="session.courseSessionId"
-          class="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow bg-white"
+          :to="{ name: 'teacher-session-details', params: { id: session.courseSessionId } }"
+          class="block p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow bg-white cursor-pointer hover:border-primary-300"
         >
           <div class="flex flex-col md:flex-row justify-between md:items-center gap-4">
             <div>
@@ -132,30 +109,16 @@ onMounted(() => {
             </div>
             <div class="text-left md:text-right">
               <div class="font-medium text-gray-900">
-                {{ session.dateStart ? new Date(session.dateStart).toLocaleDateString() : '' }}
+                {{ formatDatePL(session.dateStart) }}
               </div>
               <div class="text-sm text-gray-500">
-                {{
-                  session.dateStart
-                    ? new Date(session.dateStart).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                    : ''
-                }}
+                {{ formatTimePL(session.dateStart) }}
                 -
-                {{
-                  session.dateEnd
-                    ? new Date(session.dateEnd).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                    : ''
-                }}
+                {{ formatTimePL(session.dateEnd) }}
               </div>
             </div>
           </div>
-        </div>
+        </router-link>
       </div>
       <div
         v-else

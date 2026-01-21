@@ -14,9 +14,22 @@ const router = useRouter()
 
 watchEffect(() => {
   ApiClient.userGet()
-    .then((user) => {
+    .then(async (user) => {
       currentUser.value = user
-      console.log(user)
+
+      if (user.isStudent) {
+        const deviceAuth = localStorage.getItem('attend-me:device-auth')
+        if (!deviceAuth) {
+          router.replace({ name: 'student-device-register' })
+          return
+        }
+
+        try {
+          await ApiClient.userAttendanceTicketGet()
+        } catch (err: any) {
+          console.error('Failed to get device token', err)
+        }
+      }
     })
     .catch((err) => {
       console.error('Failed to fetch user', err)
@@ -37,19 +50,17 @@ function logout() {
   <div class="min-h-screen flex flex-col bg-secondary-50">
     <AppHeader :user="currentUser" @logout="logout" />
 
-    <!-- Main Content -->
     <main class="flex-grow flex flex-col items-center pt-8 px-4 pb-8">
       <div v-if="isLoading" class="text-xl text-secondary-600 mt-10">Ładowanie...</div>
 
       <TeacherDashboard v-else-if="currentUser?.isTeacher" :user="currentUser" />
-
       <StudentDashboard v-else-if="currentUser?.isStudent" :user="currentUser" />
 
       <div v-else class="text-center mt-20">
         <h1 class="text-4xl font-bold text-secondary-900 mb-4">Witaj w AttendMe</h1>
         <p class="text-xl text-gray-600 mb-8">Zaloguj się, aby uzyskać dostęp do panelu.</p>
         <router-link
-          to="/login"
+          :to="{ name: 'login' }"
           class="inline-block bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors shadow-md"
         >
           Zaloguj się
