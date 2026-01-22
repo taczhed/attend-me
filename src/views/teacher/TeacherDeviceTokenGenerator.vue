@@ -107,7 +107,7 @@ async function generateToken() {
   try {
     const result = await ApiClient.userDeviceRegisterTokenGet(foundStudent.value.userId)
     generatedToken.value = result.token || ''
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Failed to generate device token', err)
     error.value = 'Nie udało się wygenerować tokenu. Sprawdź czy student istnieje w systemie.'
   } finally {

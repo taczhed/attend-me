@@ -16,7 +16,7 @@ const error = ref('')
 const successMessage = ref('')
 const cameraError = ref('')
 
-const cameraErrorMessages = {
+const cameraErrorMessages: Record<string, string> = {
   NotAllowedError: 'Brak uprawnień do kamery. Zezwól na dostęp w ustawieniach przeglądarki.',
   NotFoundError: 'Nie znaleziono kamery na tym urządzeniu.',
   NotSupportedError: 'Wymagane bezpieczne połączenie (HTTPS).',
@@ -31,7 +31,7 @@ async function initializeScanner() {
   try {
     const tokenResult = await ApiClient.courseSessionAttendanceScannerTokenGet(sessionId)
     scannerToken.value = tokenResult.token || ''
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('Failed to get scanner token', err)
     error.value = 'Nie udało się zainicjalizować skanera'
   } finally {
@@ -49,7 +49,7 @@ async function onDecode() {
     setTimeout(() => {
       successMessage.value = ''
     }, 3000)
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('Failed to register attendance', err)
     error.value = 'Nie udało się zarejestrować obecności'
 
@@ -59,8 +59,8 @@ async function onDecode() {
   }
 }
 
-function onInit(promise: Promise<any>) {
-  promise.catch((err) => {
+function onInit(promise: Promise<MediaStream>) {
+  promise.catch((err: Error) => {
     const errorMessage = cameraErrorMessages[err.name]
     if (errorMessage) {
       cameraError.value = errorMessage

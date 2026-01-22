@@ -32,7 +32,7 @@ async function fetchTicket() {
     } else {
       error.value = 'Backend zwrócił pustą odpowiedź - brak tokenu'
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Failed to fetch token', err)
     error.value = 'Nie udało się pobrać tokenu.'
   } finally {
