@@ -1,4 +1,5 @@
-/* AI GENERATED */
+/* AI GENERATED - Sonnet 4.5 */
+/* TypeScript: Stwórz utility functions do dat w polskim formacie - formatDatePL (dd.mm.rrrr), formatTimePL (HH:MM), getDateRange(filter: 'today'|'tomorrow'|'next-week'|'past') zwracający DateRange {dateStart?, dateEnd?}. Użyj locale 'pl-PL'. */
 
 export interface DateRange {
   dateStart?: Date
