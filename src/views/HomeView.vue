@@ -26,7 +26,7 @@ watchEffect(() => {
 
         try {
           await ApiClient.userAttendanceTicketGet()
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error('Failed to get device token', err)
         }
       }
