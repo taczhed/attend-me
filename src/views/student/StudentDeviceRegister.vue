@@ -67,7 +67,8 @@ async function handleRegister() {
     await router.replace('/')
   } catch (err) {
     console.error('Device registration failed', err)
-    error.value = 'Nieprawidłowy token rejestracyjny lub błąd serwera. Sprawdź wprowadzone dane.'
+    error.value =
+      'Nieprawidłowy token rejestracyjny lub inne urządzenie zostało przypisane do tego konta. Skontaktuj się z administratorem.'
   } finally {
     loading.value = false
   }

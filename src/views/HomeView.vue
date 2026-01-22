@@ -46,7 +46,6 @@ watchEffect(() => {
 
           if (isDeviceMismatch) {
             ApiClient.deviceTokenResult = undefined
-            localStorage.removeItem('attend-me:device-auth')
             router.replace({ name: 'student-device-register' })
           }
         }
