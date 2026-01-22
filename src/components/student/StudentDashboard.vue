@@ -10,10 +10,14 @@ import {
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import { getDateRange, formatDatePL, formatTimePL } from '@/utils/dateHelpers'
+import BaseButton from '@/components/base/BaseButton.vue'
+import { useRouter } from 'vue-router'
 
 defineProps<{
   user: User
 }>()
+
+const router = useRouter()
 
 const studentSessions = ref<CourseSessionListItem[]>([])
 const isLoading = ref(true)
@@ -46,6 +50,10 @@ async function fetchStudentSessions() {
   }
 }
 
+function openAttendanceQR() {
+  router.push({ name: 'student-attendance-qr' })
+}
+
 let searchTimeout: ReturnType<typeof setTimeout>
 watch([searchText, dateFilter], () => {
   clearTimeout(searchTimeout)
@@ -61,8 +69,9 @@ onMounted(() => {
 
 <template>
   <div class="w-full max-w-5xl">
-    <div class="mb-8">
+    <div class="mb-8 flex justify-between items-center">
       <h1 class="text-3xl font-bold text-secondary-900">Panel Studenta</h1>
+      <BaseButton @click="openAttendanceQR" variant="primary">Rejestruj obecność</BaseButton>
     </div>
 
     <div class="bg-white p-6 rounded-lg shadow-md">
