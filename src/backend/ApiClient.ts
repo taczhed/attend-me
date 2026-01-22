@@ -82,9 +82,11 @@ export class Api extends ApiClientBase {
     return request
   }
 
-  deviceAuthReset() {
-    this.deviceTokenResult = undefined
-    window.localStorage.removeItem('attend-me:device-auth')
+  userDeviceResetToken(userId: number) {
+    return super.userDeviceReset(userId).then(() => {
+      this.deviceTokenResult = undefined
+      window.localStorage.removeItem('attend-me:device-auth')
+    })
   }
 
   userDeviceRegisterWithToken(token: string, data: DeviceRegisterDTO): Promise<TokenResult> {

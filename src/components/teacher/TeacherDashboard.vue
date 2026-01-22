@@ -65,7 +65,7 @@ onMounted(() => {
     <div class="flex justify-between items-center mb-8">
       <h1 class="text-3xl font-bold text-secondary-900">Panel Wykładowcy</h1>
       <router-link :to="{ name: 'teacher-device-token' }">
-        <BaseButton variant="secondary">Wygeneruj token</BaseButton>
+        <BaseButton variant="secondary">Zarządzaj tokenami</BaseButton>
       </router-link>
     </div>
 

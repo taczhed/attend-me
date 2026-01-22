@@ -18,6 +18,7 @@ const albumIdInput = ref('')
 const generatedToken = ref('')
 const isLoading = ref(false)
 const isSearching = ref(false)
+const isResetting = ref(false)
 const error = ref('')
 const foundStudent = ref<{ userId: number; name: string; surname: string; albumId: number } | null>(
   null,
@@ -115,6 +116,27 @@ async function generateToken() {
   }
 }
 
+async function resetDevice() {
+  if (!foundStudent.value) {
+    error.value = 'Najpierw wyszukaj studenta'
+    return
+  }
+
+  error.value = ''
+  isResetting.value = true
+
+  try {
+    await ApiClient.userDeviceResetToken(foundStudent.value.userId)
+    alert('Urządzenie zostało zresetowane. Student może teraz zarejestrować nowe urządzenie.')
+    generatedToken.value = ''
+  } catch (err: unknown) {
+    console.error('Failed to reset device', err)
+    error.value = 'Nie udało się zresetować urządzenia. Spróbuj ponownie.'
+  } finally {
+    isResetting.value = false
+  }
+}
+
 function copyToClipboard() {
   navigator.clipboard.writeText(generatedToken.value)
   alert('Token skopiowany do schowka!')
@@ -138,9 +160,12 @@ function goBack() {
         <div class="bg-white p-8 rounded-lg shadow-md">
           <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-secondary-900 mb-2">
-              Generator tokenu rejestracyjnego
+              Zarządzanie tokenami rejestracyjnymi
             </h1>
-            <p class="text-gray-600">Wygeneruj token dla studenta do zarejestrowania urządzenia</p>
+            <p class="text-gray-600">
+              Wygeneruj token dla studenta do zarejestrowania urządzenia lub wyrejestruj urządzenie
+              studenta
+            </p>
           </div>
 
           <div class="space-y-6">
@@ -173,14 +198,25 @@ function goBack() {
               </div>
             </div>
 
-            <BaseButton
-              @click="generateToken"
-              variant="primary"
-              :disabled="isLoading || !foundStudent"
-              class="w-full"
-            >
-              {{ isLoading ? 'Generowanie tokenu...' : 'Wygeneruj token' }}
-            </BaseButton>
+            <div class="space-y-2">
+              <BaseButton
+                @click="generateToken"
+                variant="primary"
+                :disabled="isLoading || !foundStudent"
+                class="w-full"
+              >
+                {{ isLoading ? 'Generowanie tokenu...' : 'Wygeneruj token' }}
+              </BaseButton>
+
+              <BaseButton
+                @click="resetDevice"
+                variant="primary"
+                :disabled="isResetting || !foundStudent"
+                class="w-full"
+              >
+                {{ isResetting ? 'Resetowanie urządzenia...' : 'Zresetuj urządzenie studenta' }}
+              </BaseButton>
+            </div>
 
             <div v-if="generatedToken" class="space-y-4">
               <div class="bg-green-50 border border-green-200 p-6 rounded-lg">
@@ -200,9 +236,9 @@ function goBack() {
             <div class="bg-gray-50 border border-gray-200 p-4 rounded-lg text-sm text-gray-600">
               <strong>Jak to działa?</strong><br />
               <ol class="mt-2 ml-4 list-decimal list-outside">
-                <li>Wpisujesz number indeksu studenta</li>
+                <li>Wpisujesz numer indeksu studenta</li>
                 <li>Student został znaleziony w bazie</li>
-                <li>Generujesz token i przekazujesz go studentowi</li>
+                <li>Generujesz token lub zwalniasz urządzenie studenta</li>
               </ol>
             </div>
           </div>
