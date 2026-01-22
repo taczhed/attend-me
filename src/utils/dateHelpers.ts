@@ -1,3 +1,5 @@
+/* AI GENERATED */
+
 export interface DateRange {
   dateStart?: Date
   dateEnd?: Date
