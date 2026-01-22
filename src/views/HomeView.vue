@@ -27,7 +27,28 @@ watchEffect(() => {
         try {
           await ApiClient.userAttendanceTicketGet()
         } catch (err: unknown) {
-          console.error('Failed to get device token', err)
+          let isDeviceMismatch = false
+
+          if (
+            typeof err === 'object' &&
+            err !== null &&
+            'status' in err &&
+            (err as { status: number }).status === 403
+          ) {
+            try {
+              const response = 'response' in err ? (err as { response: string }).response : '{}'
+              const problemDetails = JSON.parse(response || '{}')
+              isDeviceMismatch = problemDetails.type === 'device_mismatch'
+            } catch {
+              isDeviceMismatch = true
+            }
+          }
+
+          if (isDeviceMismatch) {
+            ApiClient.deviceTokenResult = undefined
+            localStorage.removeItem('attend-me:device-auth')
+            router.replace({ name: 'student-device-register' })
+          }
         }
       }
     })
