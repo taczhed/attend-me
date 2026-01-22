@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiClient } from '@/backend/ApiClient'
-import { DeviceRegisterDTO } from '@/backend/ApiClientBase'
+import { DeviceRegisterDTO, User } from '@/backend/ApiClientBase'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -10,6 +10,7 @@ import { parseAlbumId, isValidAlbumId } from '@/utils/numberHelpers'
 
 const router = useRouter()
 
+const user = ref<User | null>(null)
 const registrationToken = ref('')
 const deviceName = ref('')
 const studentName = ref('')
@@ -17,6 +18,20 @@ const studentSurname = ref('')
 const albumIdNumber = ref('')
 const loading = ref(false)
 const error = ref('')
+
+async function fetchUser() {
+  try {
+    user.value = await ApiClient.userGet()
+  } catch {
+    router.replace('/login')
+  }
+}
+
+function logout() {
+  ApiClient.userLogout()
+  user.value = null
+  router.replace('/login')
+}
 
 async function handleRegister() {
   error.value = ''
@@ -73,11 +88,15 @@ async function handleRegister() {
     loading.value = false
   }
 }
+
+onMounted(async () => {
+  fetchUser()
+})
 </script>
 
 <template>
   <div class="min-h-screen flex flex-col bg-secondary-50">
-    <AppHeader />
+    <AppHeader :user="user" @logout="logout" />
 
     <main class="flex-grow flex items-center justify-center px-4 py-12">
       <div class="w-full max-w-md bg-white rounded-2xl shadow-lg px-8 py-12">
