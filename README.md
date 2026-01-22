@@ -1,48 +1,67 @@
-# attend-me
+# AttendMe
 
-This template should help get you started developing with Vue 3 in Vite.
+A modern QR code-based attendance tracking system for educational institutions, built with Vue 3 and TypeScript.
 
-## Recommended IDE Setup
+## Tech Stack
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- **Frontend Framework**: Vue 3 (Composition API)
+- **Language**: TypeScript 5
+- **Build Tool**: Vite 7
+- **Styling**: Tailwind CSS 4
+- **Routing**: Vue Router 4
+- **QR Code**: qrcode, vue-qrcode-reader
+- **Code Quality**: ESLint 9, Prettier
 
-## Recommended Browser Setup
+## Getting Started
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd) 
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+### Prerequisites
 
-## Type Support for `.vue` Imports in TS
+- Node.js: ^20.19.0 or >=22.12.0
+- npm or yarn package manager
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+### Installation
 
-## Customize configuration
+```bash
+# Clone the repository
+git clone https://github.com/taczhed/attend-me.git
+cd attend-me
 
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
+# Install dependencies
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+### Development
 
-```sh
+```bash
+# Start development server with hot-reload
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+The application will be available at `http://localhost:5173/attend-me/`
 
-```sh
-npm run build
-```
+## Available Scripts
 
-### Lint with [ESLint](https://eslint.org/)
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server with hot-reload |
+| `npm run build` | Type-check, compile and minify for production |
+| `npm run type-check` | Run TypeScript type checking |
+| `npm run build-only` | Build without type-checking |
+| `npm run preview` | Preview production build locally |
+| `npm run lint` | Lint and auto-fix code issues |
+| `npm run format` | Format code with Prettier |
 
-```sh
-npm run lint
-```
+
+## Backend Integration
+
+The application connects to a RESTful API backend:
+- Auto-generated API client with TypeScript types
+- Automatic date deserialization
+- Token-based authorization
+
+API DOCS: https://attendme-backend.runasp.net/swagger/index.html
+
+## Authors
+ - [taczhed](https://github.com/taczhed)
+ - [osiakmikolaj](https://github.com/osiakmikolaj)
+ - [NotTabak](https://github.com/NotTabak)
