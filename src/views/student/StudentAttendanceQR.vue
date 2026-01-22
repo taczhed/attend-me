@@ -104,7 +104,7 @@ onUnmounted(() => {
 
             <div v-if="!attendanceRegistered && qrCodeDataUrl" class="flex flex-col items-center">
               <div class="bg-white p-6 rounded-lg border-4 border-primary-600 shadow-lg mb-4">
-                <img :src="qrCodeDataUrl" alt="QR Code" class="w-[300px] h-[300px]" />
+                <img :src="qrCodeDataUrl" alt="QR Code" class="w-[220px] h-[220px]" />
               </div>
 
               <div class="text-center space-y-2">

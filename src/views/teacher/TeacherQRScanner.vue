@@ -10,7 +10,6 @@ const route = useRoute()
 const router = useRouter()
 
 const sessionId = Number(route.params.id)
-const scannerToken = ref('')
 const isLoading = ref(true)
 const error = ref('')
 const successMessage = ref('')
@@ -24,38 +23,57 @@ const cameraErrorMessages: Record<string, string> = {
   OverconstrainedError: 'Kamera nie spełnia wymagań.',
 }
 
-async function initializeScanner() {
-  isLoading.value = true
-  error.value = ''
-
+async function initializeScannerToken() {
   try {
-    const tokenResult = await ApiClient.courseSessionAttendanceScannerTokenGet(sessionId)
-    scannerToken.value = tokenResult.token || ''
-  } catch (err: unknown) {
-    console.error('Failed to get scanner token', err)
-    error.value = 'Nie udało się zainicjalizować skanera'
+    const result = await ApiClient.courseSessionAttendanceScannerTokenGet(sessionId)
+    if (result?.token) {
+      ApiClient.deviceTokenResult = result
+    } else {
+      error.value = 'Nie udało się uzyskać tokenu skanera'
+    }
+  } catch (err) {
+    console.error('Failed to initialize scanner token', err)
+    error.value = 'Błąd inicjalizacji skanera'
   } finally {
     isLoading.value = false
   }
 }
 
-async function onDecode() {
-  if (!scannerToken.value) return
+interface DetectedBarcode {
+  rawValue: string
+  format: string
+  boundingBox?: DOMRectReadOnly
+  cornerPoints?: { x: number; y: number }[]
+}
+
+async function onDetect(detectedCodes: DetectedBarcode[]) {
+  if (!detectedCodes || detectedCodes.length === 0) return
+
+  const firstCode = detectedCodes[0]
+  if (!firstCode) return
+
+  const decodedString = firstCode.rawValue
+  if (!decodedString) return
 
   try {
-    await ApiClient.courseSessionAttendanceRegister(scannerToken.value)
+    await ApiClient.courseSessionAttendanceRegister(decodedString)
     successMessage.value = 'Obecność zarejestrowana pomyślnie!'
 
     setTimeout(() => {
       successMessage.value = ''
-    }, 3000)
+      router.push({ name: 'teacher-session-details', params: { id: sessionId } })
+    }, 5000)
   } catch (err: unknown) {
-    console.error('Failed to register attendance', err)
-    error.value = 'Nie udało się zarejestrować obecności'
+    console.error('Failed to register attendance - full error:', err)
+    if (err instanceof Error) {
+      error.value = `Błąd: ${err.message}`
+    } else {
+      error.value = 'Nie udało się zarejestrować obecności'
+    }
 
     setTimeout(() => {
       error.value = ''
-    }, 3000)
+    }, 5000)
   }
 }
 
@@ -75,7 +93,7 @@ function goBack() {
 }
 
 onMounted(() => {
-  initializeScanner()
+  initializeScannerToken()
 })
 </script>
 
@@ -108,14 +126,14 @@ onMounted(() => {
               v-if="successMessage"
               class="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-lg mb-6"
             >
-              ✓ {{ successMessage }}
+              {{ successMessage }}
             </div>
 
             <div
               v-if="error"
               class="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg mb-6"
             >
-              ✗ {{ error }}
+              {{ error }}
             </div>
 
             <div
@@ -130,7 +148,7 @@ onMounted(() => {
               <div
                 class="aspect-square w-full max-w-md mx-auto rounded-lg overflow-hidden border-4 border-primary-600"
               >
-                <qrcode-stream @decode="onDecode" @init="onInit" />
+                <qrcode-stream @detect="onDetect" @init="onInit" />
               </div>
 
               <div class="text-center text-gray-600">
