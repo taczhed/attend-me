@@ -3,10 +3,19 @@ Patryk Lach (15415):
     - Instalacja i definicja kolorów Tailwind
     - Wygenerowanie i obsługa metod backend-owych za pomocą NSwagStudio
     - Stworzenie strony, mechanizmu oraz komponentów logowania
-    - Zmiany związane z tworzeniem i utrzymywaniem biblioteki komponentów bazowych
+    - Prace związane z utrzymywaniem biblioteki komponentów bazowych
+    - Prace związane z naprawą skanowania kodów i rejestracji urządzeń
 
 Mikołaj Osiak (15253)
     - Sprawdzanie ról uzytkownika
-    - panel wykładowcy i studenta
-    - wylogowywanie
-    - filtrowanie i wyszukiwanie zajęć
+    - Panel wykładowcy i studenta
+    - Wylogowywanie
+    - Filtrowanie i wyszukiwanie zajęć
+
+Szymon Tabaczyński (15137)
+  - Szczegóły zajęć wykładowcy z listą obecności
+  - Skanowanie kodów QR (rejestracja obecności wykładowcy)
+  - Generator tokenów urządzeń dla studentów
+  - Rejestracja urządzeń studenta
+  - Szczegóły zajęć studenta z historią obecności
+  - Generowanie kodów QR (rejestracja obecności studenta)
